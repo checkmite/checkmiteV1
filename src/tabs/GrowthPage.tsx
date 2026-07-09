@@ -1,0 +1,327 @@
+import { useState, useEffect } from 'react';
+import './GrowthPage.css';
+import { Badge } from '../components/Badge';
+import { BoxSelector } from '../components/BoxSelector';
+import { Icon } from '../components/Icons';
+import { LineChart } from '../components/LineChart';
+import { api } from '../api/client';
+import type { GrowthResult } from '../api/client';
+import type { CultureBox, Measurement } from '../types';
+
+interface GrowthPageProps {
+  boxes: CultureBox[];
+  selectedBoxId: string;
+  onBoxChange: (id: string) => void;
+  onBoxCreate: (box: Omit<CultureBox, 'id'>) => Promise<void> | void;
+}
+
+function dateOnly(value: string) {
+  return value.slice(0, 10);
+}
+
+function numberValue(value: number | undefined, digits = 0) {
+  if (value === undefined || value === null) return '-';
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function signedNumberValue(value: number | undefined, digits = 0) {
+  if (value === undefined || value === null) return '-';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${numberValue(value, digits)}`;
+}
+
+function signedPercentValue(value: number | undefined, digits = 1) {
+  if (value === undefined || value === null) return '-';
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${numberValue(value, digits)}%`;
+}
+
+type AnalysisHistory = {
+  key: string;
+  measuredAt: string;
+  types: Set<Measurement['type']>;
+  countValue?: number;
+  detectionCount?: number;
+  densityPerLiter?: number;
+  vitalityScore?: number;
+  activeRatio?: number;
+};
+
+const MERGE_WINDOW_MS = 5 * 60 * 1000;
+
+function compactAnalysisHistory(measurements: Measurement[]) {
+  const sorted = measurements
+    .slice()
+    .sort((a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime());
+
+  return sorted.reduce<AnalysisHistory[]>((groups, item) => {
+    const measuredAtMs = new Date(item.measuredAt).getTime();
+    const latest = groups[groups.length - 1];
+    const latestMs = latest ? new Date(latest.measuredAt).getTime() : 0;
+    const sameAnalysis = latest && Math.abs(measuredAtMs - latestMs) <= MERGE_WINDOW_MS;
+    const group = sameAnalysis
+      ? latest
+      : {
+          key: `${item.measuredAt}-${item.id}`,
+          measuredAt: item.measuredAt,
+          types: new Set<Measurement['type']>(),
+        };
+
+    if (!sameAnalysis) groups.push(group);
+
+    group.types.add(item.type);
+    if (measuredAtMs < new Date(group.measuredAt).getTime()) {
+      group.measuredAt = item.measuredAt;
+    }
+    if (item.type === 'detection') {
+      group.detectionCount = item.countValue;
+    }
+    if (item.type === 'density') {
+      group.densityPerLiter = item.densityPerLiter;
+    }
+    if (item.type === 'vitality') {
+      group.vitalityScore = item.vitalityScore;
+      group.activeRatio = item.activeRatio;
+    }
+    group.countValue = group.densityPerLiter ?? group.detectionCount ?? group.countValue;
+
+    return groups;
+  }, []);
+}
+
+function historyTypeLabel(types: Set<Measurement['type']>) {
+  if (types.has('density') && types.has('vitality')) return '통합 분석';
+  if (types.has('density') && types.has('detection')) return '탐지·밀도';
+  if (types.has('detection')) return '객체 탐지';
+  if (types.has('density')) return '밀도 분석';
+  if (types.has('vitality')) return '활력도';
+  return '분석';
+}
+
+function growthStatus(rate: number | undefined, hasComparison: boolean) {
+  if (!hasComparison || rate === undefined || rate === null) return '비교 데이터 부족';
+  if (rate > 20) return '최근 증식 활발';
+  if (rate < -10) return '최근 감소 추세';
+  return '최근 유지 관찰';
+}
+
+function countGrowthTrend(growth: GrowthResult | null) {
+  const trend = growth?.countTrend ?? [];
+  const first = trend[0]?.countValue ?? 0;
+  if (first <= 0) return [];
+  return trend.map((point) => ((point.countValue - first) / first) * 100);
+}
+
+export function GrowthPage({
+  boxes,
+  selectedBoxId,
+  onBoxChange,
+  onBoxCreate,
+}: GrowthPageProps) {
+  const box = boxes.find((item) => item.id === selectedBoxId) ?? boxes[0];
+  const [growth, setGrowth] = useState<GrowthResult | null>(null);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
+  const [expandedCard, setExpandedCard] = useState<'count' | 'trend' | 'cumulative' | 'recent' | null>(null);
+
+  useEffect(() => {
+    if (!box?.id) return;
+    setGrowth(null);
+    setMeasurements([]);
+    Promise.all([
+      api.getGrowth(box.id).catch(() => null),
+      api.listMeasurements(box.id).catch(() => []),
+    ]).then(([g, m]) => {
+      setGrowth(g);
+      setMeasurements(m as Measurement[]);
+    });
+  }, [box?.id]);
+
+  const growthRateTrend = countGrowthTrend(growth);
+  const analysisHistory = compactAnalysisHistory(measurements);
+  const firstCountDate = growth?.countTrend[0]?.date;
+  const latestCountDate = growth?.countTrend[growth.countTrend.length - 1]?.date;
+  const previousCountDate = growth?.countTrend[growth.countTrend.length - 2]?.date;
+  const hasRecentComparison = Boolean(previousCountDate);
+  const growthLabel = growthStatus(growth?.recentWeightedGrowthRatePercent, hasRecentComparison);
+  const growthBadge =
+    growthLabel === '최근 증식 활발' ? 'high' : growthLabel === '최근 감소 추세' ? 'low' : 'mid';
+
+  return (
+    <div className="page">
+      <div className="page-head">
+        <div className="page-eyebrow"><span className="pe-dot" />증식률 분석 · GROWTH</div>
+        <h1 className="page-title">마리 / 1L · 활력도 기반 증식률 분석</h1>
+        <p className="page-desc">사육 박스별 마리 / 1L와 활력도 변화를 3:1 가중치로 반영하고, 직전 측정 대비 변화도 함께 관찰합니다.</p>
+      </div>
+
+      <div className="growth-selector">
+        <BoxSelector boxes={boxes} value={box?.id ?? ''} onChange={onBoxChange} onCreate={onBoxCreate} />
+      </div>
+
+      <div className={`card growth-hero growth-hero-${growthBadge}`}>
+        <div className="card-head">
+          <div className="card-title">대표 증식률</div>
+          <span className="growth-hero-period">{growth ? `${growth.from} → ${growth.to} / ${growth.days}일` : ''}</span>
+        </div>
+        <div className={`growth-hero-label growth-hero-label-${growthBadge}`}>
+          {growthLabel}
+        </div>
+        <div className="growth-primary-metrics">
+          <div className="growth-primary-card growth-primary-card-main">
+            <div className="growth-primary-label">직전 측정 대비 증식률</div>
+            <strong className="growth-primary-value tnum">
+              {previousCountDate ? signedPercentValue(growth?.recentWeightedGrowthRatePercent) : '-'}
+            </strong>
+            <span>
+              {growth && previousCountDate && latestCountDate
+                ? `${previousCountDate} 대비 ${latestCountDate}`
+                : '직전 비교를 위한 측정 2회 이상 필요'}
+            </span>
+          </div>
+          <div className="growth-primary-card">
+            <div className="growth-primary-label">첫 측정 대비 증식률</div>
+            <strong className="growth-primary-value tnum">
+              {signedPercentValue(growth?.weightedGrowthRatePercent)}
+            </strong>
+            <span>
+              {growth && firstCountDate && latestCountDate
+                ? `${firstCountDate} 대비 ${latestCountDate}`
+                : 'density 측정 2회 이상 필요'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className={`growth-sub${expandedCard ? ' growth-sub-has-expanded' : ' grid growth-sub-grid'}`}>
+        {(['count', 'trend', 'recent', 'cumulative'] as const).map((key) => {
+          const isExpanded = expandedCard === key;
+          const toggle = () => setExpandedCard(isExpanded ? null : key);
+          return (
+            <div
+              key={key}
+              className={`card growth-sub-card${isExpanded ? ' expanded' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={toggle}
+              onKeyDown={(e) => e.key === 'Enter' && toggle()}
+            >
+              <div className="card-head">
+                <div className="card-title">
+                  {key === 'count' && '현재 마리 / 1L'}
+                  {key === 'trend' && '증식률 그래프'}
+                  {key === 'recent' && '직전 측정 대비 증식률'}
+                  {key === 'cumulative' && '첫 측정 대비 증식률'}
+                </div>
+                <span className="growth-expand-icon">
+                  {isExpanded ? <Icon name="x" /> : <Icon name="scan" />}
+                </span>
+              </div>
+
+              {key === 'count' && (
+                <>
+                  <div className="stat-value tnum">
+                    {growth && growth.currentCount > 0 ? numberValue(growth.currentCount) : '-'}
+                    <small>마리 / 1L</small>
+                  </div>
+                  <div className="stat-sub">{growth?.to ?? '측정 필요'}</div>
+                  {isExpanded && (
+                    <div className="growth-sub-detail">
+                      <span>초기 {numberValue(growth?.firstCount)} 마리 / 1L</span>
+                      <span>누적 변화 {signedNumberValue(growth?.countChange)} 마리 / 1L</span>
+                      <span>직전 {numberValue(growth?.previousCount)} 마리 / 1L</span>
+                      <span>최근 변화 {signedNumberValue(growth?.recentCountChange)} 마리 / 1L</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {key === 'trend' && (
+                <>
+                  {growthRateTrend.length > 1
+                    ? <LineChart data={growthRateTrend} xlabel="측정" height={isExpanded ? 300 : 180} />
+                    : <div className="growth-empty">증식률 추이를 보려면 density 측정 데이터가 더 필요합니다.</div>}
+                  {isExpanded && (
+                    <div className="growth-sub-detail">
+                      <span>기준 {numberValue(growth?.firstCount)} 마리 / 1L</span>
+                      <span>현재 {numberValue(growth?.currentCount)} 마리 / 1L</span>
+                      <span>첫 측정 대비 {signedPercentValue(growth?.countChangeRatePercent)}</span>
+                      <span>직전 측정 대비 {signedPercentValue(growth?.recentCountChangeRatePercent)}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {key === 'cumulative' && (
+                <>
+                  <div className="stat-value tnum">
+                    {growth ? signedNumberValue(growth.weightedGrowthRatePercent, 1) : '-'}<small>%</small>
+                  </div>
+                  <div className="stat-sub">{growth && firstCountDate ? `${firstCountDate} 대비 통합 변화` : '첫 측정 대비'}</div>
+                  {isExpanded && (
+                    <div className="growth-sub-detail">
+                      <span>마리 / 1L 변화율 {signedPercentValue(growth?.countChangeRatePercent)}</span>
+                      <span>활력도 변화율 {signedPercentValue(growth?.vitalityChangeRatePercent)}</span>
+                      <span>가중치 마리 / 1L 0.75</span>
+                      <span>가중치 활력도 0.25</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {key === 'recent' && (
+                <>
+                  <div className="stat-value tnum">
+                    {growth && previousCountDate ? signedNumberValue(growth.recentWeightedGrowthRatePercent, 1) : '-'}<small>%</small>
+                  </div>
+                  <div className="stat-sub">{growth && previousCountDate ? `${previousCountDate} 대비 통합 변화` : '직전 측정 대비'}</div>
+                  {isExpanded && (
+                    <div className="growth-sub-detail">
+                      <span>마리 / 1L 변화율 {signedPercentValue(growth?.recentCountChangeRatePercent)}</span>
+                      <span>활력도 변화율 {signedPercentValue(growth?.recentVitalityChangeRatePercent)}</span>
+                      <span>통합 증식률 {signedPercentValue(growth?.recentWeightedGrowthRatePercent)}</span>
+                      <span>관찰 기준 {growth?.recentDropThresholdPercent.toFixed(0) ?? '-'}% 이하</span>
+                      <span>{growth?.recentDropDetected ? '주의 관찰 대상' : '최근 변화 안정'}</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card growth-table-card">
+        <div className="card-head">
+          <div className="card-title">분석 이력</div>
+          <span className="card-sub">같은 영상/시간대의 탐지·밀도·활력도를 한 회차로 표시</span>
+        </div>
+        <div className="growth-table">
+          <div className="growth-row growth-row-head">
+            <span>날짜</span>
+            <span>분석</span>
+            <span>마리 / 1L</span>
+            <span>활력도</span>
+          </div>
+          {analysisHistory.length === 0 && (
+            <div className="growth-empty" style={{ padding: '20px 0' }}>측정 이력이 없습니다.</div>
+          )}
+          {analysisHistory
+            .map((item) => (
+              <div className="growth-row" key={item.key}>
+                <span>{dateOnly(item.measuredAt)}</span>
+                <span>
+                  <Badge kind={item.types.has('density') ? 'high' : 'neutral'}>{historyTypeLabel(item.types)}</Badge>
+                </span>
+                <span className="mono">{item.countValue?.toLocaleString() ?? '-'}</span>
+                <span className="mono">{item.vitalityScore?.toFixed(1) ?? '-'}</span>
+              </div>
+            ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}

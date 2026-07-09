@@ -1,0 +1,334 @@
+.growth-selector { margin-bottom: 18px; }
+
+.growth-hero { margin-top: 18px; }
+.growth-hero-high { background: var(--accent-soft); border-color: var(--accent-soft-2); }
+.growth-hero-low { background: var(--surface); border-color: var(--border); }
+.growth-hero-mid { background: var(--surface); }
+
+.growth-hero-period {
+  font-size: 13px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.growth-hero-label {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 12px 0;
+}
+.growth-hero-label-high { color: var(--accent); }
+.growth-hero-label-mid  { color: var(--text); }
+.growth-hero-label-low  { color: var(--text); }
+
+.growth-primary-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 16px;
+}
+
+.growth-primary-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+}
+
+.growth-primary-card-main {
+  border-color: var(--accent-soft-2);
+  background: color-mix(in srgb, var(--accent-soft) 64%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.growth-primary-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.growth-primary-value {
+  color: var(--text);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.growth-primary-card span {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.growth-sub {
+  margin-top: 18px;
+  align-items: stretch;
+}
+
+/* 확장 없을 때: 4개 대표 지표 */
+.growth-sub-grid {
+  gap: 18px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* 확장 있을 때: 2열 (확장 카드 2fr, 나머지 1fr) */
+.growth-sub-has-expanded {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.growth-sub-card {
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.growth-sub-card:hover {
+  border-color: var(--accent-soft-2);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* 확장된 카드: 왼쪽 열 전체, 두 행 점유 */
+.growth-sub-card.expanded {
+  order: -1;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  cursor: default;
+  border-color: var(--accent-soft-2);
+}
+.growth-sub-card.expanded:hover {
+  box-shadow: none;
+}
+
+/* 확장 카드 내 stat 값 크게 */
+.growth-sub-card.expanded .stat-value {
+  font-size: 64px;
+  margin-top: 16px;
+}
+.growth-sub-card.expanded .stat-value small {
+  font-size: 22px;
+}
+.growth-sub-card.expanded .stat-sub {
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.growth-expand-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-3);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.growth-sub-card:hover .growth-expand-icon,
+.growth-sub-card.expanded .growth-expand-icon { opacity: 1; }
+
+.growth-sub-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, .34);
+}
+
+.confirm-dialog {
+  width: min(460px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 20px;
+}
+
+.confirm-copy {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.confirm-copy b {
+  color: var(--text);
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.growth-empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  color: var(--text-3);
+  font-size: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.growth-result-card {
+  grid-column: 1 / -1;
+}
+
+.growth-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.growth-summary > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.growth-summary strong {
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.growth-summary-label {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.growth-weight-bar {
+  display: flex;
+  height: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  margin-bottom: 9px;
+}
+
+.growth-weight-bar span {
+  display: block;
+  min-width: 0;
+}
+
+.growth-weight-count { background: var(--accent); }
+.growth-weight-vitality { background: #7A8FA6; }
+
+.growth-weight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.growth-weight-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.growth-weight-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.growth-dot-count { background: var(--accent); }
+.growth-dot-vitality { background: #7A8FA6; }
+
+.growth-formula {
+  display: grid;
+  gap: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin-bottom: 8px;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.growth-table-card { margin-top: 18px; overflow: hidden; }
+
+.growth-table {
+  display: grid;
+  border: 1px solid var(--border);
+}
+
+.growth-row {
+  display: grid;
+  grid-template-columns: 1.1fr .8fr 1fr .75fr;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 14px;
+}
+
+.growth-row:last-child { border-bottom: none; }
+
+.growth-row-head {
+  background: var(--surface-2);
+  color: var(--text);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .growth-sub-grid,
+  .growth-sub-has-expanded {
+    grid-template-columns: 1fr;
+  }
+
+  .growth-sub-card.expanded {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .growth-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .growth-primary-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-actions {
+    flex-direction: column;
+  }
+
+  .growth-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .growth-row-head {
+    display: none;
+  }
+}
