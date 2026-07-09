@@ -18,7 +18,7 @@ from .vitality_service import VitalityService
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 MODEL_PATH = Path(os.getenv("CHECKMITE_MODEL_PATH", ROOT_DIR / "model" / "best.pt"))
-VITALITY_MODEL_PATH = Path(os.getenv("CHECKMITE_VITALITY_MODEL_PATH", ROOT_DIR / "model" / "vitality" / "best1.onnx"))
+VITALITY_MODEL_PATH = Path(os.getenv("CHECKMITE_VITALITY_MODEL_PATH", ROOT_DIR / "model" / "vitality" / "best.onnx"))
 MODEL_PART_GLOB = "best.pt.part-*"
 DEFAULT_CONF = float(os.getenv("CHECKMITE_CONF", "0.5"))
 DEFAULT_IMGSZ = int(os.getenv("CHECKMITE_IMGSZ", "640"))

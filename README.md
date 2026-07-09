@@ -105,7 +105,7 @@ curl http://127.0.0.1:8000/health
   - `DATABASE_URL`, `UPLOAD_DIR`, `MODEL_RUNTIME_URL`, `CHECKMITE_*` 값을 실행 환경에 맞게 수정합니다.
 - 모델 가중치 파일
   - `model/best.pt`
-  - `model/vitality/best1.onnx`
+  - `model/vitality/best.onnx`
   - 실제 모델 파일은 별도로 전달받아 위 경로에 배치합니다.
 - PostgreSQL 데이터베이스
   - `.env`의 `DATABASE_URL`에 맞는 DB와 계정을 준비한 뒤 `npm run backend:migrate`를 실행합니다.
