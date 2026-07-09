@@ -96,17 +96,18 @@ curl http://127.0.0.1:8000/health
 | [API 문서](https://github.com/checkmite/checkmiteV1/wiki/API-문서) | 백엔드 및 모델 API 요약 |
 | [DB 구조](https://github.com/checkmite/checkmiteV1/wiki/DB-구조) | 주요 테이블과 migration |
 
-## Repo에 포함하지 않는 파일
+## 로컬 실행 전 준비사항
 
-다음 파일은 GitHub repo에 올리지 않습니다.
+이 repo는 소스 코드와 예시 설정만 포함합니다. 실제 실행 환경에서는 아래 파일과 설정을 로컬에 준비해야 합니다.
 
-- `.env`와 서버별 비밀 환경변수
-- 업로드 이미지/영상과 분석 산출물
-- 원본 연구 문서와 추출 텍스트
-- DB dump와 백업 파일
+- `.env`
+  - `.env.example`을 복사해 생성합니다.
+  - `DATABASE_URL`, `UPLOAD_DIR`, `MODEL_RUNTIME_URL`, `CHECKMITE_*` 값을 실행 환경에 맞게 수정합니다.
 - 모델 가중치 파일
   - `model/best.pt`
   - `model/vitality/best1.onnx`
-- 학습 노트북과 실험용 산출물
+  - 실제 모델 파일은 별도로 전달받아 위 경로에 배치합니다.
+- PostgreSQL 데이터베이스
+  - `.env`의 `DATABASE_URL`에 맞는 DB와 계정을 준비한 뒤 `npm run backend:migrate`를 실행합니다.
 
-실제 모델 파일은 별도로 전달받아 Wiki의 모델 파일 준비 문서에 따라 배치해야 합니다.
+자세한 절차는 [환경변수 설정](https://github.com/checkmite/checkmiteV1/wiki/환경변수-설정)과 [모델 파일 준비](https://github.com/checkmite/checkmiteV1/wiki/모델-파일-준비)를 참고하세요.
