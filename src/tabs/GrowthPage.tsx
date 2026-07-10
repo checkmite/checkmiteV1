@@ -5,7 +5,8 @@ import { BoxSelector } from '../components/BoxSelector';
 import { Icon } from '../components/Icons';
 import { LineChart } from '../components/LineChart';
 import { api } from '../api/client';
-import type { GrowthResult } from '../api/client';
+import type { DensityResult, GrowthResult } from '../api/client';
+import { DensityResultView } from './DensityPage';
 import type { CultureBox, Measurement } from '../types';
 
 interface GrowthPageProps {
@@ -43,6 +44,7 @@ type AnalysisHistory = {
   key: string;
   measuredAt: string;
   types: Set<Measurement['type']>;
+  resultJson?: Record<string, unknown>;
   countValue?: number;
   detectionCount?: number;
   densityPerLiter?: number;
@@ -81,15 +83,124 @@ function compactAnalysisHistory(measurements: Measurement[]) {
     }
     if (item.type === 'density') {
       group.densityPerLiter = item.densityPerLiter;
+      group.resultJson = item.resultJson ?? group.resultJson;
     }
     if (item.type === 'vitality') {
       group.vitalityScore = item.vitalityScore;
       group.activeRatio = item.activeRatio;
+      group.resultJson = group.resultJson ?? item.resultJson;
     }
     group.countValue = group.densityPerLiter ?? group.detectionCount ?? group.countValue;
 
     return groups;
   }, []);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
+function asStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
+function asNumberArray(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(asNumber).filter((item): item is number => item !== undefined);
+}
+
+function storedResultToDensityResult(item: AnalysisHistory): DensityResult | null {
+  const result = item.resultJson;
+  if (!result) return null;
+
+  type StoredVitality = NonNullable<DensityResult['vitality']>;
+  type NoticeLevel = NonNullable<StoredVitality['notice']>['level'];
+  const notice = asRecord(result.vitalityNotice);
+  const noticeLevel = notice?.level;
+  const normalizedNoticeLevel: NoticeLevel | undefined =
+    noticeLevel === 'normal' || noticeLevel === 'caution' || noticeLevel === 'danger'
+      ? noticeLevel
+      : undefined;
+  const normalizedNotice: StoredVitality['notice'] = notice && normalizedNoticeLevel
+    ? {
+        level: normalizedNoticeLevel,
+        label: asString(notice.label) ?? '',
+        message: asString(notice.message) ?? '',
+      }
+    : null;
+
+  const representativeTrack = asRecord(result.representativeTrack) as StoredVitality['representativeTrack'];
+  const sampleResults = Array.isArray(result.sampleResults) ? result.sampleResults : [];
+
+  return {
+    measurementId: item.key,
+    boxId: '',
+    type: 'density',
+    measuredAt: item.measuredAt,
+    density: {
+      densityPerLiter: asNumber(result.densityPerLiter ?? item.densityPerLiter) ?? 0,
+      currentDensityPerLiter: asNumber(result.densityPerLiter ?? item.densityPerLiter) ?? 0,
+      estimatedCountPerMl: asNumber(result.estimatedCountPerMl ?? item.countValue) ?? 0,
+      bestFrameCount: asNumber(result.bestFrameCount) ?? 0,
+      peakCount: asNumber(result.bestFrameCount) ?? 0,
+      averageFrameCount: asNumber(result.averageFrameCount),
+      sampleCount: asNumber(result.sampleCount),
+      sampledFrames: asNumber(result.sampledFrames),
+      videoDurationSeconds: asNumber(result.videoDurationSeconds),
+      analysisWindowSeconds: asNumber(asRecord(sampleResults[0])?.density && asRecord(asRecord(sampleResults[0])?.density)?.analysisWindowSeconds),
+      selectedFrameIndex: asNumber(result.selectedFrameIndex),
+      selectedFrameTimestampSeconds: asNumber(result.selectedFrameTimestampSeconds),
+      selectedFrameQuality: asRecord(result.selectedFrameQuality) as DensityResult['density']['selectedFrameQuality'],
+      densityGrade: asString(result.densityGrade),
+      warnings: asStringArray(result.warnings),
+    },
+    vitality: {
+      score: asNumber(result.vitalityScore ?? item.vitalityScore) ?? 0,
+      activeRatio: asNumber(result.activeRatio ?? item.activeRatio),
+      averageSpeedMmPerSec: asNumber(result.averageSpeedMmPerSec),
+      averageSpeedRatio: asNumber(result.averageSpeedRatio),
+      notice: normalizedNotice,
+      trend: asNumberArray(result.vitalityTrend),
+      sampleCount: asNumber(result.sampleCount),
+      confirmedTracks: asNumber(result.confirmedTracks),
+      movingTracks: asNumber(result.movingTracks),
+      representativeTrack,
+    },
+    measurement: {},
+    samples: sampleResults.map((sample, index) => {
+      const sampleRecord = asRecord(sample) ?? {};
+      const density = asRecord(sampleRecord.density) ?? {};
+      const vitality = asRecord(sampleRecord.vitality) ?? {};
+      return {
+        sampleIndex: asNumber(sampleRecord.sampleIndex) ?? index + 1,
+        originalName: asString(sampleRecord.originalName) ?? `${index + 1}번 영상`,
+        bestFrameCount: asNumber(density.bestFrameCount),
+        estimatedCountPerMl: asNumber(density.estimatedCountPerMl),
+        densityPerLiter: asNumber(density.densityPerLiter),
+        averageFrameCount: asNumber(density.averageFrameCount),
+        selectedFrameIndex: asNumber(density.selectedFrameIndex),
+        vitalityScore: asNumber(vitality.vitalityScore ?? vitality.score),
+        activeRatio: asNumber(vitality.activeRatio),
+        averageSpeedMmPerSec: asNumber(vitality.averageSpeedMmPerSec),
+        averageSpeedRatio: asNumber(vitality.averageSpeedRatio),
+        confirmedTracks: asNumber(vitality.confirmedTracks),
+        movingTracks: asNumber(vitality.movingTracks),
+      };
+    }),
+  };
 }
 
 function historyTypeLabel(types: Set<Measurement['type']>) {
@@ -125,11 +236,13 @@ export function GrowthPage({
   const [growth, setGrowth] = useState<GrowthResult | null>(null);
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [expandedCard, setExpandedCard] = useState<'count' | 'trend' | 'cumulative' | 'recent' | null>(null);
+  const [selectedHistoryKey, setSelectedHistoryKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!box?.id) return;
     setGrowth(null);
     setMeasurements([]);
+    setSelectedHistoryKey(null);
     Promise.all([
       api.getGrowth(box.id).catch(() => null),
       api.listMeasurements(box.id).catch(() => []),
@@ -148,6 +261,8 @@ export function GrowthPage({
   const growthLabel = growthStatus(growth?.recentWeightedGrowthRatePercent, hasRecentComparison);
   const growthBadge =
     growthLabel === '최근 증식 활발' ? 'high' : growthLabel === '최근 감소 추세' ? 'low' : 'mid';
+  const selectedHistory = analysisHistory.find((item) => item.key === selectedHistoryKey);
+  const selectedResult = selectedHistory ? storedResultToDensityResult(selectedHistory) : null;
 
   return (
     <div className="page">
@@ -304,23 +419,50 @@ export function GrowthPage({
             <span>분석</span>
             <span>마리 / 1L</span>
             <span>활력도</span>
+            <span>결과</span>
           </div>
           {analysisHistory.length === 0 && (
             <div className="growth-empty" style={{ padding: '20px 0' }}>측정 이력이 없습니다.</div>
           )}
           {analysisHistory
             .map((item) => (
-              <div className="growth-row" key={item.key}>
+              <div className={`growth-row${selectedHistoryKey === item.key ? ' growth-row-selected' : ''}`} key={item.key}>
                 <span>{dateOnly(item.measuredAt)}</span>
                 <span>
                   <Badge kind={item.types.has('density') ? 'high' : 'neutral'}>{historyTypeLabel(item.types)}</Badge>
                 </span>
                 <span className="mono">{item.countValue?.toLocaleString() ?? '-'}</span>
                 <span className="mono">{item.vitalityScore?.toFixed(1) ?? '-'}</span>
+                <span>
+                  <button
+                    className="btn btn-ghost growth-detail-button"
+                    type="button"
+                    disabled={!item.resultJson}
+                    onClick={() => setSelectedHistoryKey(selectedHistoryKey === item.key ? null : item.key)}
+                  >
+                    <Icon name={selectedHistoryKey === item.key ? 'x' : 'scan'} />
+                    {selectedHistoryKey === item.key ? '닫기' : '보기'}
+                  </button>
+                </span>
               </div>
             ))}
         </div>
       </div>
+
+      {selectedHistory && selectedResult && (
+        <div className="growth-history-detail">
+          <div className="growth-history-detail-head">
+            <div>
+              <div className="page-eyebrow"><span className="pe-dot" />저장된 회차 결과</div>
+              <h2>{dateOnly(selectedHistory.measuredAt)} 통합 분석</h2>
+            </div>
+            <button className="btn btn-ghost" type="button" onClick={() => setSelectedHistoryKey(null)}>
+              <Icon name="x" />닫기
+            </button>
+          </div>
+          <DensityResultView data={selectedResult} showTrackingVideo={false} />
+        </div>
+      )}
 
     </div>
   );

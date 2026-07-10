@@ -284,7 +284,7 @@
 
 .growth-row {
   display: grid;
-  grid-template-columns: 1.1fr .8fr 1fr .75fr;
+  grid-template-columns: 1.1fr .8fr 1fr .75fr .72fr;
   gap: 12px;
   align-items: center;
   padding: 11px 13px;
@@ -299,6 +299,41 @@
   background: var(--surface-2);
   color: var(--text);
   font-weight: 700;
+}
+
+.growth-row-selected {
+  background: var(--accent-soft);
+}
+
+.growth-detail-button {
+  width: 100%;
+  min-height: 34px;
+  justify-content: center;
+  padding: 7px 10px;
+}
+
+.growth-detail-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.growth-history-detail {
+  margin-top: 18px;
+}
+
+.growth-history-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.growth-history-detail-head h2 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1.2;
 }
 
 @media (max-width: 720px) {

@@ -41,7 +41,8 @@ function getVideoDuration(file: File) {
 
 interface DensityResultViewProps {
   data: DensityResult;
-  onReset: () => void;
+  onReset?: () => void;
+  showTrackingVideo?: boolean;
 }
 
 function vitalityNotice(vitality: DensityResult['vitality']) {
@@ -69,7 +70,7 @@ function vitalityNotice(vitality: DensityResult['vitality']) {
   };
 }
 
-function DensityResultView({ data, onReset }: DensityResultViewProps) {
+export function DensityResultView({ data, onReset, showTrackingVideo = true }: DensityResultViewProps) {
   const density = data.density;
   const vitality = data.vitality;
   const perLiter = density.currentDensityPerLiter.toLocaleString();
@@ -160,11 +161,13 @@ function DensityResultView({ data, onReset }: DensityResultViewProps) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button className="btn btn-ghost btn-block" onClick={onReset}><Icon name="upload" />새 영상 분석</button>
-      </div>
+      {onReset && (
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-ghost btn-block" onClick={onReset}><Icon name="upload" />새 영상 분석</button>
+        </div>
+      )}
 
-      {vitality?.trackingVideoUrl && (
+      {showTrackingVideo && vitality?.trackingVideoUrl && (
         <div className="card" style={{ marginTop: 18 }}>
           <div className="card-head">
             <div className="card-title">트래킹 영상</div>

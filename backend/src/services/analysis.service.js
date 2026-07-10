@@ -107,6 +107,19 @@ const trackingVideoOutputFor = (file) => {
   };
 };
 
+const removeTrackingMediaReferences = (result) => {
+  const stored = JSON.parse(JSON.stringify(result));
+  delete stored.trackingVideoUrl;
+  delete stored.trackingVideoPath;
+  for (const sample of stored.sampleResults || []) {
+    if (sample.vitality) {
+      delete sample.vitality.trackingVideoUrl;
+      delete sample.vitality.trackingVideoPath;
+    }
+  }
+  return stored;
+};
+
 export const analysisService = {
   async startDensity(input, files) {
     const box = await cultureBoxRepository.findById(input.boxId);
@@ -321,6 +334,7 @@ export const analysisService = {
     }
     const countValue = Math.round(estimatedCountPerMl);
     const vitalityScore = Number(averageVitalityScore.toFixed(2));
+    const storedModelResult = removeTrackingMediaReferences(modelResult);
 
     return withTransaction(async (client) => {
       const uploadedFiles = [];
@@ -341,7 +355,7 @@ export const analysisService = {
           measuredAt: input.measuredAt,
           countValue,
           densityPerLiter,
-          resultJson: modelResult,
+          resultJson: storedModelResult,
         },
         client
       );
@@ -384,7 +398,7 @@ export const analysisService = {
           measuredAt: input.measuredAt,
           vitalityScore,
           activeRatio: modelResult.activeRatio,
-          resultJson: modelResult,
+          resultJson: storedModelResult,
         },
         client
       );
