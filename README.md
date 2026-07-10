@@ -45,6 +45,7 @@ Model API      FastAPI + Ultralytics YOLO + OpenCV/ONNX Runtime
 
 ```text
 Frontend       http://localhost:80
+Local dev      http://localhost:5173
 Backend API    http://localhost:3000/api
 Model API      http://localhost:8000
 PostgreSQL     localhost:5432
@@ -64,6 +65,9 @@ npm run backend:migrate
 서비스 실행 후 상태 확인:
 
 ```bash
+sudo npm run dev          # 또는 npm run dev:local
+npm run backend:dev
+npm run api
 curl http://127.0.0.1:80/
 curl http://127.0.0.1:3000/api/health
 curl http://127.0.0.1:8000/health
@@ -106,7 +110,8 @@ curl http://127.0.0.1:8000/health
 - 모델 가중치 파일
   - `model/best.pt`
   - `model/vitality/best.onnx`
-  - 실제 모델 파일은 별도로 전달받아 위 경로에 배치합니다.
+  - 실제 모델 파일은 지도교수/팀 담당자 또는 지정된 내부 저장소에서 전달받아 위 경로에 배치합니다.
+  - 모델 API의 `/health` 응답에서 `model_exists`, `vitality_model_exists`가 모두 `true`인지 확인합니다.
 - PostgreSQL 데이터베이스
   - `.env`의 `DATABASE_URL`에 맞는 DB와 계정을 준비한 뒤 `npm run backend:migrate`를 실행합니다.
 

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 80",
-    "api": "uvicorn api.model_server:app --host 0.0.0.0 --port 8000",
+    "dev:local": "vite --host 0.0.0.0 --port 5173",
+    "api": ".venv/bin/uvicorn api.model_server:app --host 0.0.0.0 --port 8000",
     "api:install": "python3 -m venv .venv && . .venv/bin/activate && python -m pip install -r api/requirements.txt",
     "backend:dev": "node backend/src/server.js",
     "backend:migrate": "node backend/src/db/migrate.js",
